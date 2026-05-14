@@ -16,6 +16,13 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+// Bypass the rate limiter so individual tests don't bleed into each other
+vi.mock("@/lib/rate-limit", () => ({
+  RateLimiter: vi.fn().mockImplementation(() => ({
+    check: vi.fn().mockReturnValue({ allowed: true, remaining: 100 }),
+  })),
+}));
+
 vi.mock("@/lib/config", () => ({
   getConfig: vi.fn(),
 }));
