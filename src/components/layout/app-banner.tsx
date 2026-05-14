@@ -23,18 +23,28 @@ import { useBranding } from "@/components/providers/branding-provider";
 
 const STORAGE_KEY = "app-banner-dismissed";
 
+type NavigatorWithClientHints = Navigator & {
+  userAgentData?: { platform?: string };
+};
+
 function isAppleDevice(): boolean {
   if (typeof window === "undefined") return false;
-  
+
+  // Prefer User-Agent Client Hints API — structured data that browsers control,
+  // not a raw UA string that extensions or dev tools can trivially spoof.
+  const uaData = (navigator as NavigatorWithClientHints).userAgentData;
+  if (uaData?.platform) {
+    const platform = uaData.platform.toLowerCase();
+    return platform === "ios" || platform === "macos";
+  }
+
+  // Legacy fallback for Safari / older WebKit browsers that don't expose Client Hints
   const userAgent = navigator.userAgent.toLowerCase();
-  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform?.toLowerCase() || navigator.platform?.toLowerCase() || "";
-  
-  // Check for iOS devices
+  const legacyPlatform = navigator.platform?.toLowerCase() ?? "";
+
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
-  
-  // Check for macOS
-  const isMac = platform.includes("mac") || /macintosh|macintel/.test(userAgent);
-  
+  const isMac = legacyPlatform.includes("mac") || /macintosh|macintel/.test(userAgent);
+
   return isIOS || isMac;
 }
 

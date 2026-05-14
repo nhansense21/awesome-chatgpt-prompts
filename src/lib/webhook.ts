@@ -203,12 +203,25 @@ function isPrivateUrl(urlString: string): boolean {
       if (a >= 240) return true;
     }
     
-    // Block IPv6 loopback and link-local
+    // Block IPv6 addresses
     if (hostname.startsWith('[')) {
       const ipv6 = hostname.slice(1, -1).toLowerCase();
-      if (ipv6 === '::1' || ipv6.startsWith('fe80:') || ipv6.startsWith('fc') || ipv6.startsWith('fd')) {
-        return true;
+
+      // Loopback (::1) and link-local (fe80::/10)
+      if (ipv6 === '::1' || ipv6.startsWith('fe80:')) return true;
+
+      // Unique Local Addresses (fc00::/7)
+      if (ipv6.startsWith('fc') || ipv6.startsWith('fd')) return true;
+
+      // IPv6-mapped IPv4 (::ffff:w.x.y.z) — extract and re-validate the embedded IPv4
+      if (ipv6.startsWith('::ffff:')) {
+        const embedded = ipv6.slice(7);
+        // May be dotted-decimal or hex; only dotted-decimal is common in practice
+        if (isPrivateUrl(`http://${embedded}`)) return true;
       }
+
+      // Unspecified address (::/128)
+      if (ipv6 === '::') return true;
     }
     
     return false;

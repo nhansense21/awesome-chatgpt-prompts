@@ -8,6 +8,21 @@ const withMDX = createMDX({
   extension: /\.mdx?$/,
 });
 
+const securityHeaders = [
+  // Prevent MIME-type sniffing
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // Disallow embedding in iframes (clickjacking protection)
+  { key: "X-Frame-Options", value: "DENY" },
+  // Enforce HTTPS for 1 year including subdomains
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  // Limit referrer information on cross-origin requests
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Restrict access to sensitive browser APIs
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  // Prevent XSS via cross-origin type confusion
+  { key: "X-XSS-Protection", value: "1; mode=block" },
+];
+
 const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
@@ -36,6 +51,15 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+  },
+  // Security headers applied to all routes
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
   },
   // Redirects
   async redirects() {

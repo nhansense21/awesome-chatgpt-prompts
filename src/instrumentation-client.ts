@@ -44,9 +44,8 @@ Sentry.init({
   // Define how likely Replay events are sampled when an error occurs.
   replaysOnErrorSampleRate: 1.0,
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // Do NOT send PII (user IPs, emails, session cookies) to Sentry
+  sendDefaultPii: false,
 
   // Filter out browser extension and third-party script errors
   beforeSend(event) {
