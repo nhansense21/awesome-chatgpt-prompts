@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { isUniqueConstraintViolation } from "@/lib/db-errors";
 import { getConfig } from "@/lib/config";
+import { RateLimiter } from "@/lib/rate-limit";
+
+// 5 registration attempts per IP per hour
+const registerLimiter = new RateLimiter({ max: 5, windowSeconds: 3600 });
 
 // Trim before validation to prevent unicode/whitespace tricks that bypass uniqueness checks (e.g. "admin@x.com\u200B" vs "admin@x.com") on certain DBMS
 const trimmed = z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.string());
@@ -12,10 +16,20 @@ const registerSchema = z.object({
   name: trimmed.pipe(z.string().min(2)),
   username: trimmed.pipe(z.string().min(1).max(30).regex(/^[a-z0-9_]+$/)),
   email: trimmed.pipe(z.string().email()).transform((v) => v.toLowerCase()),
-  password: z.string().min(6),
+  password: z.string().min(8).max(128),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Rate-limit by IP to prevent mass account creation
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? request.headers.get("x-real-ip") ?? "unknown";
+  const rateCheck = registerLimiter.check(ip);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: "too_many_requests", message: "Too many registration attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rateCheck.retryAfterSeconds) } }
+    );
+  }
+
   try {
     // Check if registration is allowed
     const config = await getConfig();

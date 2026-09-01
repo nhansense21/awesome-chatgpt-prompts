@@ -16,6 +16,15 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+// Bypass the rate limiter so individual tests don't bleed into each other.
+// `check` is a plain function, not vi.fn(), so vi.resetAllMocks() in beforeEach
+// cannot reset its return value and cause rateCheck.allowed to be undefined.
+vi.mock("@/lib/rate-limit", () => ({
+  RateLimiter: vi.fn().mockImplementation(() => ({
+    check: () => ({ allowed: true, remaining: 100 }),
+  })),
+}));
+
 vi.mock("@/lib/config", () => ({
   getConfig: vi.fn(),
 }));
